@@ -21,7 +21,7 @@ public class Simulator {
 	private static double PROBABILITY_OF_LOCKING_DOOR = 0.8;
 	private static double PROBABILITY_OF_KNOCKING_1 = 0.7;
 	private static double PROBABILITY_OF_KNOCKING_2 = 0.2;
-	private static double PROBABILITY_OF_HAVING_TO_USE_BATHROOM = 0.5;
+	private static double BASE_PROBABILITY_OF_HAVING_TO_USE_BATHROOM = 0.5; // This will be weighted by time since a person last used the bathroom.
 	private static int RUN_TIME = 10; // seconds
 	
 	private static Semaphore bathroom;
@@ -56,7 +56,7 @@ public class Simulator {
 			
 			long elapsed = System.currentTimeMillis() - lastTime;
 			
-			return Math.random() <= (PROBABILITY_OF_HAVING_TO_USE_BATHROOM*elapsed)/1000.0/RUN_TIME;
+			return Math.random() <= (BASE_PROBABILITY_OF_HAVING_TO_USE_BATHROOM*elapsed)/1000.0/RUN_TIME;
 		}
 		
 		private boolean willKnock() {
