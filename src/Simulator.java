@@ -1,7 +1,4 @@
-import java.sql.Time;
 import java.util.concurrent.Semaphore;
-
-import javax.print.attribute.standard.MediaSize.Other;
 
 /**
  * Do people who forget to lock the bathroom door have a higher chance of being 
