@@ -19,8 +19,8 @@ public class Simulator {
 	// Constants
 	private static int TIME_IN_BATHROOM = 200; // milliseconds
 	private static double PROBABILITY_OF_LOCKING_DOOR = 0.8;
-	private static double PROBABILITY_OF_KNOCKING_1 = 0.7;
-	private static double PROBABILITY_OF_KNOCKING_2 = 0.2;
+	private static double PROBABILITY_OF_KNOCKING_1 = 0.7; // If the door doesn't indicate occupied/vacant, there is a higher probability
+	private static double PROBABILITY_OF_KNOCKING_2 = 0.3; // that a person will knock than if it doesn't.
 	private static double BASE_PROBABILITY_OF_HAVING_TO_USE_BATHROOM = 0.5; // This will be weighted by time since a person last used the bathroom.
 	private static int RUN_TIME = 10; // seconds
 	
