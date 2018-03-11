@@ -25,14 +25,12 @@ public class Simulator {
 	private static int RUN_TIME = 10; // seconds
 	
 	private static Semaphore bathroom;
-	private static boolean[] people = new boolean[10];
 	private static boolean doorMarkings = false;
 	private static boolean locked = false;
 	
 	private static class Person extends Thread {
 		private final int id;
 		private int conflicts; 
-		private int lastI = 0;
 		private boolean hasToUse = false;
 		private long lastTime = 0;
 
