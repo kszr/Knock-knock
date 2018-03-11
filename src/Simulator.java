@@ -107,14 +107,14 @@ public class Simulator {
 		
 		private void useBathroom() throws InterruptedException {
 			if (doorMarkings && bathroom.isLocked()) {
-				print("Door says occupied, so I don't try.");
+				print("Door says occupied, so I don't try");
 				Thread.sleep(BACKOFF);
 				return;
 			}
 			
 			// If I knock and the bathroom is occupied, I back off.
 			if (willKnock() && !bathroom.isAvailable()) {
-				print("I knocked, but the bathroom was in use.");
+				print("I knocked, but the bathroom was in use");
 				Thread.sleep(BACKOFF);
 				return;
 			} 
@@ -123,9 +123,9 @@ public class Simulator {
 			
 			if (tried) {
 				if (bathroom.isLocked()) {
-					print("Acquired and locked the door.");
+					print("Acquired and locked the door");
 				} else {
-					print("Acquired but forgot to lock.");
+					print("Acquired but forgot to lock");
 				}
 				uses++;
 				Thread.sleep(TIME_IN_BATHROOM);
@@ -140,7 +140,7 @@ public class Simulator {
 				} else {
 					print("I tried the door, but it was locked");
 				}
-				// Back off after failed attempt to acquire bathroom. This is to give the current occupant of the bathroom
+				// Back off after a failed attempt to acquire bathroom. This is to give the current occupant of the bathroom
 				// the privacy he deserves.
 				Thread.sleep(BACKOFF);
 			}
