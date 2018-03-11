@@ -140,7 +140,7 @@ public class Simulator {
 				} else {
 					print("I tried the door, but it was locked");
 				}
-				// Backoff after failed attempt to acquire bathroom. This is to give the current occupant of the bathroom
+				// Back off after failed attempt to acquire bathroom. This is to give the current occupant of the bathroom
 				// the privacy he deserves.
 				Thread.sleep(BACKOFF);
 			}
