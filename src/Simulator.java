@@ -17,34 +17,72 @@ import java.util.concurrent.Semaphore;
  */
 public class Simulator {
 	// Constants
-	private static int TIME_IN_BATHROOM = 200; // milliseconds
-	private static double PROBABILITY_OF_LOCKING_DOOR = 0.9;
-	private static double PROBABILITY_OF_KNOCKING_1 = 0.8; // If the door doesn't indicate occupied/vacant, there is a higher probability
-	private static double PROBABILITY_OF_KNOCKING_2 = 0.4; // that a person will knock than if it doesn't.
-	private static double BASE_PROBABILITY_OF_HAVING_TO_USE_BATHROOM = 0.5; // This will be weighted by time since a person last used the bathroom.
-	private static int RUN_TIME = 10; // seconds
+	private static final int TIME_IN_BATHROOM = 200; // milliseconds
+	private static final double PROBABILITY_OF_LOCKING_DOOR = 0.8;
+	private static final double PROBABILITY_OF_KNOCKING_1 = 0.7; // If the door doesn't indicate occupied/vacant, there is a higher probability
+	private static final double PROBABILITY_OF_KNOCKING_2 = 0.1; // that a person will knock than if it doesn't.
+	private static final double BASE_PROBABILITY_OF_HAVING_TO_USE_BATHROOM = 0.2; // This will be weighted by time since a person last used the bathroom.
+	private static final int RUN_TIME = 10000; // milliseconds
+	private static final int BACKOFF = 900; // milliseconds; back off if you fail to acquire bathroom.
 	
-	private static Semaphore bathroom;
+	// Static variables
+	private static Bathroom bathroom;
 	private static boolean doorMarkings = false;
-	private static boolean locked = false;
+	
+	private static class Bathroom extends Semaphore {
+		private boolean locked = false;
+
+		public Bathroom() {
+			super(1);
+		}
+		
+		public boolean isLocked() {
+			return locked;
+		}
+		
+		public boolean tryLock() {
+			boolean tried = this.tryAcquire();
+			if (tried) {
+				this.locked = Math.random() <= PROBABILITY_OF_LOCKING_DOOR;
+			}
+			return tried;
+		}
+		
+		public void releaseLock() {
+			this.release();
+			this.locked = false;
+		}
+		
+		public boolean isAvailable() {
+			return this.availablePermits() > 0;
+		}
+	}
 	
 	private static class Person extends Thread {
 		private final int id;
 		private int conflicts; 
+		private int uses;
 		private boolean hasToUse = false;
 		private long lastTime = 0;
+		private long startTime = 0;
 
 		public Person(int id) {
 			this.id = id;
 			conflicts = 0;
+			uses = 0;
 		}
 		
 		public int getConflicts() {
 			return conflicts;
 		}
 		
+		private int getUses() {
+			return uses;
+		}
+		
 		private void print(String s) {
-			System.out.println(id + ": " + s);
+			double timestamp = ((System.currentTimeMillis() - startTime)/10)/100.0;
+			System.out.println(id + ": " + s + " (" + timestamp + ")");
 		}
 		
 		private boolean willUseBathroom() {
@@ -55,8 +93,11 @@ public class Simulator {
 			}
 			
 			long elapsed = System.currentTimeMillis() - lastTime;
+			if (elapsed < 2000) {
+				return false;
+			}
 			
-			return Math.random() <= (BASE_PROBABILITY_OF_HAVING_TO_USE_BATHROOM*elapsed)/1000.0/RUN_TIME;
+			return Math.random() <= (BASE_PROBABILITY_OF_HAVING_TO_USE_BATHROOM*elapsed)/(1.0*RUN_TIME);
 		}
 		
 		private boolean willKnock() {
@@ -65,51 +106,55 @@ public class Simulator {
 		}
 		
 		private void useBathroom() throws InterruptedException {
-			if (doorMarkings && locked) {
+			if (doorMarkings && bathroom.isLocked()) {
 				print("Door says occupied, so I don't try.");
+				Thread.sleep(BACKOFF);
 				return;
 			}
 			
 			// If I knock and the bathroom is occupied, I back off.
-			if (willKnock() && bathroomInUse()) {
+			if (willKnock() && !bathroom.isAvailable()) {
 				print("I knocked, but the bathroom was in use.");
+				Thread.sleep(BACKOFF);
 				return;
 			} 
 			
-			boolean tried = bathroom.tryAcquire();
+			boolean tried = bathroom.tryLock();
 			
 			if (tried) {
-				print("Acquired!");
-				locked = Math.random() <= PROBABILITY_OF_LOCKING_DOOR;
+				if (bathroom.isLocked()) {
+					print("Acquired and locked the door.");
+				} else {
+					print("Acquired but forgot to lock.");
+				}
+				uses++;
 				Thread.sleep(TIME_IN_BATHROOM);
-				locked = false;
-				bathroom.release();
+				bathroom.releaseLock();
 				hasToUse = false;
 				lastTime = System.currentTimeMillis();
 				print("And out!");
 			} else {
-				if (!locked) {
+				if (!bathroom.isLocked()) {
 					print("I went in, but someone was already inside!");
 					conflicts++;
 				} else {
 					print("I tried the door, but it was locked");
 				}
+				// Backoff after failed attempt to acquire bathroom. This is to give the current occupant of the bathroom
+				// the privacy he deserves.
+				Thread.sleep(BACKOFF);
 			}
 		}
 		
-		private boolean bathroomInUse() {
-			return bathroom.availablePermits() < 1;
-		}
-		
 		public void run() {
-			long startTime = System.currentTimeMillis();
+			startTime = System.currentTimeMillis();
 			try {
 				do {
 					if (willUseBathroom()) {
-						print(id + " wants to use the bathroom");
+						print("Wants to use the bathroom");
 						useBathroom();
 					}
-				} while (System.currentTimeMillis() - startTime <= RUN_TIME*1000);
+				} while (System.currentTimeMillis() - startTime <= RUN_TIME);
 				print("All done");
 			} catch (InterruptedException e) {
 				e.printStackTrace();
@@ -117,8 +162,18 @@ public class Simulator {
 		}
 	}
 	
-	private static int runSimulation(boolean doorSigns) {
-		bathroom = new Semaphore(1);
+	private static class ResultPair {
+		int a;
+		int b;
+		
+		public ResultPair(int a, int b) {
+			this.a = a;
+			this.b = b;
+		}
+	}
+	
+	private static ResultPair runSimulation(boolean doorSigns) {
+		bathroom = new Bathroom();
 		doorMarkings = doorSigns;
 		Person[] persons = new Person[10];
 		for (int i=0; i<10; i++) {
@@ -139,13 +194,15 @@ public class Simulator {
 		}
 		
 		int conflicts = 0;
+		int uses = 0;
 		for (Person person : persons) {
 			conflicts += person.getConflicts();
+			uses += person.getUses();
 		}
 		
 		System.out.println("End experiment");
 		
-		return conflicts;
+		return new ResultPair(conflicts, uses);
 	}
 	
 	/**
@@ -153,11 +210,11 @@ public class Simulator {
 	 * @param doorMarkers true if door indicates "vacant" or "occupied".
 	 */
 	public static void main(String[] args) {
-		int conflicts1 = runSimulation(false);
-		int conflicts2 = runSimulation(true);
+		ResultPair result1 = runSimulation(false);
+		ResultPair result2 = runSimulation(true);
 		
 		System.out.println("Number of times people walked into an occupied bathroom:");
-		System.out.println("In experiment 1: " + conflicts1);
-		System.out.println("In experiment 2: " + conflicts2);
+		System.out.println("In experiment 1: " + result1.a + " / " + result1.b + " uses of the bathroom");
+		System.out.println("In experiment 2: " + result2.a + " / " + result2.b + " uses of the bathroom");
 	}
 }
