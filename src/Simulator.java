@@ -48,6 +48,8 @@ public class Simulator {
 		}
 		
 		private boolean willUseBathroom() {
+			// A person who has to use the bathroom but hasn't yet will not 
+			// not have to use the bathroom anymore just because you asked him again.
 			if (hasToUse) {
 				return true;
 			}
