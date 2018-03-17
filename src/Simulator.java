@@ -18,7 +18,7 @@ import java.util.concurrent.Semaphore;
 public class Simulator {
 	// Constants
 	private static final int TIME_IN_BATHROOM = 200; // milliseconds
-	private static final double PROBABILITY_OF_LOCKING_DOOR = 0.8;
+	private static final double PROBABILITY_OF_LOCKING_DOOR = .9;
 	private static final double PROBABILITY_OF_KNOCKING_1 = 0.7; // If the door doesn't indicate occupied/vacant, there is a higher probability
 	private static final double PROBABILITY_OF_KNOCKING_2 = 0.1; // that a person will knock than if it doesn't.
 	private static final double BASE_PROBABILITY_OF_HAVING_TO_USE_BATHROOM = 0.2; // This will be weighted by time since a person last used the bathroom.
@@ -31,9 +31,11 @@ public class Simulator {
 	
 	private static class Bathroom extends Semaphore {
 		private boolean locked = false;
+		private Semaphore internalLock;
 
 		public Bathroom() {
 			super(1);
+			internalLock = new Semaphore(1);
 		}
 		
 		public boolean isLocked() {
@@ -41,16 +43,28 @@ public class Simulator {
 		}
 		
 		public boolean tryLock() {
+		  try {
+        internalLock.acquire();
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
 			boolean tried = this.tryAcquire();
 			if (tried) {
 				this.locked = Math.random() <= PROBABILITY_OF_LOCKING_DOOR;
 			}
+			internalLock.release();
 			return tried;
 		}
 		
 		public void releaseLock() {
+		  try {
+        internalLock.acquire();
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
 			this.release();
 			this.locked = false;
+			internalLock.release();
 		}
 		
 		public boolean isAvailable() {
